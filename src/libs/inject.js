@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Can't use TypeScript here because it's not supported in the browser
 
 const bOa$ = bOa;
@@ -24,5 +25,6 @@ ytcfg.set({
 g.C_.create(
 	document.getElementById("player"),
 	{ args: {}, attrs: {}, loaded: true },
-	ytcfg.get("WEB_PLAYER_CONTEXT_CONFIGS").WEB_PLAYER_CONTEXT_CONFIG_ID_EMBEDDED_PLAYER,
+	ytcfg.get("WEB_PLAYER_CONTEXT_CONFIGS")
+		.WEB_PLAYER_CONTEXT_CONFIG_ID_EMBEDDED_PLAYER,
 );

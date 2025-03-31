@@ -16,6 +16,9 @@ import { Worker, isMainThread, parentPort } from "node:worker_threads";
 import { cpus } from "node:os";
 import { formatError } from "./libs/utils";
 
+// Get token refresh interval from environment variable or use default (30 seconds)
+const REFRESH_INTERVAL = Number.parseInt(process.env.REFRESH_INTERVAL || "30000", 10);
+
 // Store the latest tokens
 let latestTokens: TokenResult | null = null;
 let lastUpdateTime = 0;
@@ -27,15 +30,15 @@ const generateSingleThread = async (): Promise<TokenResult> => {
 	try {
 		// Use the same simplified logging pattern as multi-threaded version
 		logger.info("Generating tokens in single-thread mode...");
-		
+
 		const visitorData = await fetchVisitorData();
 		logger.info("Creating token generation task...");
-		
+
 		const task: Task = await createTask(visitorData);
 		const { poToken } = await task.start();
-		
+
 		// Don't log success here to avoid duplication
-		
+
 		// Update the latest tokens and timestamp
 		lastUpdateTime = Date.now();
 		latestTokens = { visitorData, poToken };
@@ -127,7 +130,7 @@ const generate = generateMultiThread;
 // Get tokens - returns cached tokens if available and not expired
 const getLatestTokens = async (forceUpdate = false): Promise<TokenResult> => {
 	const now = Date.now();
-	const isExpired = now - lastUpdateTime > 30 * 1000; // 30 seconds
+	const isExpired = now - lastUpdateTime > REFRESH_INTERVAL; // Use environment variable
 
 	// If we already have a pending update, wait for it
 	if (updatePromise) {
@@ -187,13 +190,13 @@ const startServer = () => {
 							code: 200,
 							message: "Tokens have been successfully updated",
 							instructions:
-								"Please get the updated tokens from the /tokens endpoint",
+								"Please get the updated tokens from the /token endpoint",
 						},
 						null,
 						2,
 					),
 				);
-			} else if (req.url === "/tokens") {
+			} else if (req.url === "/token") {
 				const tokens = await getLatestTokens(); // Use cached tokens if available
 				res.statusCode = 200;
 				res.setHeader("Content-Type", "application/json");
@@ -226,14 +229,15 @@ const startServer = () => {
 										? Math.max(
 												0,
 												Math.floor(
-													(30 * 1000 - (Date.now() - lastUpdateTime)) / 1000,
+													(REFRESH_INTERVAL - (Date.now() - lastUpdateTime)) / 1000,
 												),
 											)
 										: "?"
 								} seconds</p>
+                <p>Refresh interval: ${REFRESH_INTERVAL / 1000} seconds</p>
               </div>
               <a href="/update" class="button">Force Update</a>
-              <a href="/tokens" class="button">Get Tokens</a>
+              <a href="/token" class="button">Get Tokens</a>
               <h2>Latest Tokens:</h2>
               <pre>${JSON.stringify(latestTokens, null, 2) || "No tokens generated yet"}</pre>
             </body>
@@ -260,7 +264,7 @@ const startServer = () => {
 		logger.success(`Server running at http://localhost:${port}`);
 		logger.info("Available endpoints:");
 		logger.info("- GET /        : Status page");
-		logger.info("- GET /tokens  : Get current tokens");
+		logger.info("- GET /token  : Get current tokens");
 		logger.info("- GET /update  : Force update tokens");
 	});
 
@@ -272,7 +276,7 @@ const startServer = () => {
 	return server;
 };
 
-// Continuously update tokens every 30 seconds
+// Continuously update tokens based on REFRESH_INTERVAL
 const startAutoUpdate = () => {
 	let running = true;
 
@@ -280,8 +284,8 @@ const startAutoUpdate = () => {
 		while (running) {
 			try {
 				await getLatestTokens();
-				// Wait 30 seconds before next update
-				await new Promise((resolve) => setTimeout(resolve, 30 * 1000));
+				// Use REFRESH_INTERVAL environment variable instead of hardcoded value
+				await new Promise((resolve) => setTimeout(resolve, REFRESH_INTERVAL));
 			} catch (error) {
 				logger.error(
 					`Auto-update error: ${error instanceof Error ? error.message : String(error)}`,
@@ -345,34 +349,34 @@ if (import.meta.main && isMainThread) {
 		if (isOneshot()) {
 			// In oneshot mode, use logger module for proper formatting
 			logger.setQuiet(false); // Ensure logging is enabled
-			
+
 			// Display a nice header
 			logger.banner();
 			logger.info("One-shot Mode");
 			logger.separator();
-			
+
 			// Generate tokens using standard logging
 			const result = await generateSingleThread();
-			
+
 			// Display results with consistent formatting
 			logger.separator();
 			logger.success("Tokens generated successfully");
-			
+
 			// Token details with colored headers using logger
 			logger.data("VISITOR DATA", result.visitorData);
 			logger.data("PO TOKEN", result.poToken);
-			
+
 			logger.separator();
 			logger.success("Done! Copy the tokens above.");
 		} else {
 			// In normal mode with minimal logging
 			logger.banner(); // Show banner just once at startup
 			logger.info("Starting YouTube Trusted Session Generator");
-			
+
 			// Start server and auto-update with multi-threaded approach
 			startServer();
 			startAutoUpdate();
-			
+
 			// Don't await initial token generation here
 			// Let it happen in the background
 			getLatestTokens();

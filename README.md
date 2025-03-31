@@ -53,11 +53,11 @@ bun install
 In normal mode, the generator will:
 1. Start an HTTP server on port 3000 (configurable via PORT env variable)
 2. Generate tokens immediately
-3. Automatically refresh tokens every 30 seconds
+3. Automatically refresh tokens every 30 seconds (configurable via REFRESH_INTERVAL env variable)
 4. Provide a web interface and API endpoints
 
 ```bash
-bun run src/index.ts
+bun start
 ```
 
 #### Web Interface
@@ -75,7 +75,7 @@ The interface allows you to:
 #### API Endpoints
 
 - `GET /` - Web interface
-- `GET /tokens` - Get current tokens
+- `GET /token` - Get current tokens
 - `GET /update` - Force update tokens (returns success message)
 
 The `/update` endpoint will return a success message when tokens are updated:
@@ -84,11 +84,11 @@ The `/update` endpoint will return a success message when tokens are updated:
   "status": "success",
   "code": 200,
   "message": "Tokens have been successfully updated",
-  "instructions": "Please get the updated tokens from the /tokens endpoint"
+  "instructions": "Please get the updated tokens from the /token endpoint"
 }
 ```
 
-After receiving this success message, you should get the updated tokens from the `/tokens` endpoint.
+After receiving this success message, you should get the updated tokens from the `/token` endpoint.
 
 ### One-shot Mode
 
@@ -107,35 +107,6 @@ This will output the tokens in JSON format:
 }
 ```
 
-### API Mode
-
-Use the API module for programmatic access:
-
-```javascript
-import { getTokens } from './src/api.js';
-
-// Get tokens silently (no console output)
-// Use cached tokens if available and not expired
-getTokens()
-    .then(result => {
-        console.log('Got tokens:', result);
-        // Use tokens for YouTube API requests
-    })
-    .catch(error => console.error('Error:', error));
-
-// Force update tokens
-getTokens(true)
-    .then(result => {
-        console.log('Got fresh tokens:', result);
-    });
-```
-
-You can also use the API module directly with the force option:
-
-```bash
-bun run src/api.ts --force
-```
-
 ## Response Format
 
 The generator returns an object with the following structure:
@@ -149,7 +120,7 @@ The generator returns an object with the following structure:
 
 ## Token Management
 
-- Tokens are automatically refreshed every 30 seconds in normal mode
+- Tokens are automatically refreshed every 30 seconds in normal mode (configurable via REFRESH_INTERVAL env variable)
 - Tokens can be force-refreshed using the `/update` endpoint
 - The API provides a `forceUpdate` option to bypass caching
 - Multi-threading is used for faster token generation

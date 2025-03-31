@@ -1,5 +1,7 @@
 # dependencies (bun install)
 node_modules
+bun.lock
+package-lock.json
 
 # output
 out

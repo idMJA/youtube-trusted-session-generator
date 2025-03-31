@@ -2,9 +2,13 @@
 	"name": "youtube-trusted-session-generator",
 	"version": "1.0.0",
 	"description": "YouTube Trusted Session Generator without browser",
-	"main": "src/index.js",
+	"main": "src/index.ts",
+	"engines": {
+		"node": ">=18.0",
+		"bun": ">=1.1.0"
+	},
 	"scripts": {
-		"start": "bun run src/index.js",
+		"start": "bun run src/index.ts",
 		"lint": "biome lint --write .",
 		"format": "biome format --write ."
 	},
