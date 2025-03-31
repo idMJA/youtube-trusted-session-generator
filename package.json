@@ -1,0 +1,28 @@
+{
+	"name": "youtube-trusted-session-generator",
+	"version": "1.0.0",
+	"description": "YouTube Trusted Session Generator without browser",
+	"main": "src/index.js",
+	"scripts": {
+		"start": "bun run src/index.js",
+		"lint": "biome lint --write .",
+		"format": "biome format --write ."
+	},
+	"author": "iaMJ",
+	"license": "MIT",
+	"dependencies": {
+		"global-agent": "^3.0.0",
+		"jsdom": "^26.0.0"
+	},
+	"type": "module",
+	"private": true,
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"@types/bun": "latest",
+		"@types/jsdom": "^21.1.7"
+	},
+	"peerDependencies": {
+		"typescript": "^5.8.2"
+	},
+	"trustedDependencies": ["@biomejs/biome"]
+}
