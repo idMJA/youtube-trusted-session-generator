@@ -95,7 +95,7 @@ After receiving this success message, you should get the updated tokens from the
 Run the generator once and get tokens directly:
 
 ```bash
-bun run src/index.ts --oneshot
+bun start --oneshot
 ```
 
 This will output the tokens in JSON format:
@@ -159,6 +159,7 @@ You can also use this library with any other application that needs to communica
 - Original implementation: [YunzheZJU/youtube-po-token-generator](https://github.com/YunzheZJU/youtube-po-token-generator)
 - Inspiration: [iv-org/youtube-trusted-session-generator](https://github.com/iv-org/youtube-trusted-session-generator)
 
+
 ## License
 
-MIT
+This project is licensed under the MIT License - see the [LICENSE file](LICENSE) for details.
