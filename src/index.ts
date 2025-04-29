@@ -11,7 +11,7 @@ interface Task {
 import { createTask } from "./libs/task";
 import { fetchVisitorData } from "./libs/workflow";
 import { logger } from "./libs/logger";
-import { createServer } from "node:http";
+import Fastify from "fastify";
 import { Worker, isMainThread, parentPort } from "node:worker_threads";
 import { cpus } from "node:os";
 import { formatError } from "./libs/utils";
@@ -171,41 +171,35 @@ const isOneshot = () => {
 };
 
 // Start HTTP server for handling update requests
-const startServer = () => {
-	const port = process.env.PORT || 3000;
+const startServer = async () => {
+	const port = Number(process.env.PORT || 3000);
+	const fastify = Fastify({
+		logger: false // We're using our own logger
+	});
 
-	const server = createServer(async (req, res) => {
-		try {
-			if (req.url === "/update") {
-				logger.info("Received force update request from /update endpoint");
-				await getLatestTokens(true); // Force update
+	// Update endpoint
+	fastify.get('/update', async (request, reply) => {
+		logger.info("Received force update request from /update endpoint");
+		await getLatestTokens(true); // Force update
 
-				// Return success message with instructions instead of tokens
-				res.statusCode = 200;
-				res.setHeader("Content-Type", "application/json");
-				res.end(
-					JSON.stringify(
-						{
-							status: "success",
-							code: 200,
-							message: "Tokens have been successfully updated",
-							instructions:
-								"Please get the updated tokens from the /token endpoint",
-						},
-						null,
-						2,
-					),
-				);
-			} else if (req.url === "/token") {
-				const tokens = await getLatestTokens(); // Use cached tokens if available
-				res.statusCode = 200;
-				res.setHeader("Content-Type", "application/json");
-				res.end(JSON.stringify(tokens, null, 2));
-			} else if (req.url === "/") {
-				// Simple status page
-				res.setHeader("Content-Type", "text/html");
-				res.statusCode = 200;
-				res.end(`
+		return {
+			status: "success",
+			code: 200,
+			message: "Tokens have been successfully updated",
+			instructions: "Please get the updated tokens from the /token endpoint"
+		};
+	});
+
+	// Token endpoint
+	fastify.get('/token', async (request, reply) => {
+		const tokens = await getLatestTokens();
+		return tokens;
+	});
+
+	// Root endpoint - status page
+	fastify.get('/', async (request, reply) => {
+		reply.header('Content-Type', 'text/html');
+		return `
           <!DOCTYPE html>
           <html>
             <head>
@@ -242,38 +236,23 @@ const startServer = () => {
               <pre>${JSON.stringify(latestTokens, null, 2) || "No tokens generated yet"}</pre>
             </body>
           </html>
-        `);
-			} else {
-				res.statusCode = 404;
-				res.setHeader("Content-Type", "application/json");
-				res.end(JSON.stringify({ error: "Not found" }));
-			}
-		} catch (error) {
-			res.statusCode = 500;
-			res.setHeader("Content-Type", "application/json");
-			res.end(
-				JSON.stringify({
-					error: "Internal Server Error",
-					message: error instanceof Error ? error.message : String(error),
-				}),
-			);
-		}
+        `;
 	});
 
-	server.listen(port, () => {
-		logger.success(`Server running at http://localhost:${port}`);
-		logger.info("Available endpoints:");
-		logger.info("- GET /        : Status page");
-		logger.info("- GET /token  : Get current tokens");
-		logger.info("- GET /update  : Force update tokens");
+	// 404 handler
+	fastify.setNotFoundHandler((request, reply) => {
+		reply.code(404).send({ error: "Not found" });
 	});
 
-	// Handle server errors
-	server.on("error", (error) => {
-		logger.error(`Server error: ${error.message}`);
-	});
+	try {
+		await fastify.listen({ port, host: '0.0.0.0' });
+		logger.info(`Server is running on port ${port}`);
+	} catch (err) {
+		logger.error(`Error starting server: ${formatError(err)}`);
+		process.exit(1);
+	}
 
-	return server;
+	return fastify;
 };
 
 // Continuously update tokens based on REFRESH_INTERVAL
