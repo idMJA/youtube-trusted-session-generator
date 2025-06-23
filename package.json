@@ -21,7 +21,7 @@
 	},
 	"type": "module",
 	"devDependencies": {
-		"@biomejs/biome": "^1.9.4",
+		"@biomejs/biome": "^2.0.4",
 		"@types/bun": "latest",
 		"@types/jsdom": "^21.1.7"
 	},
