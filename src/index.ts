@@ -252,6 +252,14 @@ const startServer = async () => {
   // Root endpoint - status page
   fastify.get("/", async (request, reply) => {
     reply.header("Content-Type", "text/html");
+    const refreshIntervalSeconds = REFRESH_INTERVAL / 1000;
+    const timeUntilNextUpdate = latestTokens
+      ? Math.max(
+          0,
+          Math.floor((REFRESH_INTERVAL - (Date.now() - lastUpdateTime)) / 1000)
+        )
+      : 0;
+
     return `
           <!DOCTYPE html>
           <html>
@@ -264,31 +272,27 @@ const startServer = async () => {
                 .button { display: inline-block; background: #c00; color: white; padding: 10px 15px; 
                           text-decoration: none; border-radius: 4px; margin: 10px 0; }
                 .info { background: #eef; padding: 10px; border-radius: 5px; margin: 10px 0; }
+                .countdown { font-weight: bold; color: #c00; }
+                .status { font-weight: bold; }
+                .status.generating { color: #ff6600; }
+                .status.idle { color: #006600; }
               </style>
             </head>
             <body>
               <h1>YouTube Trusted Session Generator</h1>
-              <p>Current status: ${
-                isGenerating ? "Generating tokens..." : "Idle"
-              }</p>
+              <p>Current status: <span class="status ${
+                isGenerating ? "generating" : "idle"
+              }">${isGenerating ? "Generating tokens..." : "Idle"}</span></p>
               <p>Last update: ${
                 lastUpdateTime
                   ? new Date(lastUpdateTime).toLocaleString()
                   : "Never"
               }</p>
               <div class="info">
-                <p>Next update in: ${
-                  latestTokens
-                    ? Math.max(
-                        0,
-                        Math.floor(
-                          (REFRESH_INTERVAL - (Date.now() - lastUpdateTime)) /
-                            1000
-                        )
-                      )
-                    : "?"
-                } seconds</p>
-                <p>Refresh interval: ${REFRESH_INTERVAL / 1000} seconds</p>
+                <p>Next update in: <span class="countdown" id="countdown">${
+                  latestTokens ? timeUntilNextUpdate : "?"
+                }</span> seconds</p>
+                <p>Refresh interval: ${refreshIntervalSeconds} seconds</p>
               </div>
               <a href="/update" class="button">Force Update</a>
               <a href="/token" class="button">Get Tokens</a>
@@ -297,6 +301,39 @@ const startServer = async () => {
                 JSON.stringify(latestTokens, null, 2) ||
                 "No tokens generated yet"
               }</pre>
+
+              <script>
+                let countdownElement = document.getElementById('countdown');
+                let lastUpdateTime = ${lastUpdateTime || 0};
+                let refreshInterval = ${REFRESH_INTERVAL};
+                let hasTokens = ${latestTokens ? "true" : "false"};
+                
+                function updateCountdown() {
+                  if (!hasTokens) {
+                    countdownElement.textContent = '?';
+                    return;
+                  }
+                  
+                  let now = Date.now();
+                  let timeSinceLastUpdate = now - lastUpdateTime;
+                  let timeUntilNext = Math.max(0, Math.floor((refreshInterval - timeSinceLastUpdate) / 1000));
+                  
+                  countdownElement.textContent = timeUntilNext;
+                  
+                  // If countdown reaches 0, refresh the page to get updated status
+                  if (timeUntilNext === 0) {
+                    setTimeout(() => {
+                      window.location.reload();
+                    }, 1000);
+                  }
+                }
+                
+                // Update countdown every second
+                setInterval(updateCountdown, 1000);
+                
+                // Initial update
+                updateCountdown();
+              </script>
             </body>
           </html>
         `;
