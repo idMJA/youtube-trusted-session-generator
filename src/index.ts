@@ -306,7 +306,7 @@ const startServer = async () => {
                 let countdownElement = document.getElementById('countdown');
                 let lastUpdateTime = ${lastUpdateTime || 0};
                 let refreshInterval = ${REFRESH_INTERVAL};
-                let hasTokens = ${latestTokens ? "true" : "false"};
+                let hasTokens = ${JSON.stringify(!!latestTokens)};
                 
                 function updateCountdown() {
                   if (!hasTokens) {
