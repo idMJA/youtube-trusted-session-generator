@@ -71,12 +71,10 @@ export const createTask = async (visitorData: string): Promise<Task> => {
 							});
 
 							// Add debugging to check if bOa function exists
-							window.eval(`
-								console.log('Starting script execution...');
-								console.log('bOa function exists:', typeof bOa !== 'undefined');
-								console.log('ytcfg exists:', typeof ytcfg !== 'undefined');
-								console.log('g exists:', typeof g !== 'undefined');
-							`);
+							console.log('Starting script execution...');
+							console.log('bOa function exists:', typeof window.bOa !== 'undefined');
+							console.log('ytcfg exists:', typeof window.ytcfg !== 'undefined');
+							console.log('g exists:', typeof window.g !== 'undefined');
 
 							window.eval(
 								baseContent.replace(
