@@ -1,5 +1,6 @@
 import { download } from "./utils";
 import { url } from "./consts";
+import { logger } from "./logger";
 
 export const fetchVisitorData = async (): Promise<string> => {
 	const data = await download(url);
@@ -8,5 +9,7 @@ export const fetchVisitorData = async (): Promise<string> => {
 	if (visitorData) {
 		return visitorData;
 	}
-	throw new Error("Failed to find visitorData");
+	const err = new Error("Failed to find visitorData");
+	logger.error(err);
+	throw err;
 };
