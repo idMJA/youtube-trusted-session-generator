@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import { join } from "node:path";
 import { JSDOM, VirtualConsole } from "jsdom";
 import { url, userAgent } from "./consts";
+import { logger } from "./logger";
 
 interface Task {
 	stop: () => void;
@@ -22,47 +23,89 @@ export const createTask = async (visitorData: string): Promise<Task> => {
 		"utf-8",
 	);
 	let destroy: (() => void) | undefined = undefined;
+	let isIntentionalClose = false;
 
 	return {
-		stop: () => destroy?.(),
+		stop: () => {
+			isIntentionalClose = true;
+			destroy?.();
+		},
 		start: async () => {
-			while (true) {
-				const { poToken } = await new Promise<{ poToken: string }>(
-					(res, rej) => {
-						const { window } = new JSDOM(domContent, {
-							url,
-							pretendToBeVisual: true,
-							runScripts: "dangerously",
-							virtualConsole: new VirtualConsole(),
-						});
+			let attempts = 0;
+			const maxAttempts = 5;
 
-						Object.defineProperty(window.navigator, "userAgent", {
-							value: userAgent,
-							writable: false,
-						});
-						window.visitorData = visitorData;
-						window.onPoToken = (poToken: string) => {
-							res({ poToken });
-						};
+			while (attempts < maxAttempts) {
+				attempts++;
 
-						window.eval(
-							baseContent.replace(
-								/}\s*\)\(_yt_player\);\s*$/,
-								(matched) => `;${baseAppendContent};${matched}`,
-							),
-						);
+				try {
+					const { poToken } = await new Promise<{ poToken: string }>(
+						(res, rej) => {
+							const timeout = setTimeout(() => {
+								const err = new Error(
+									`Token generation timeout after 30 seconds (attempt ${attempts})`,
+								);
+								logger.error(err);
+								rej(err);
+							}, 30000);
 
-						destroy = () => {
-							window.close();
-							rej(new Error("Window is closed"));
-						};
-					},
-				).finally(() => destroy?.());
+							const { window } = new JSDOM(domContent, {
+								url,
+								pretendToBeVisual: true,
+								runScripts: "dangerously",
+								virtualConsole: new VirtualConsole(),
+							});
 
-				if (poToken.length === 160) {
-					return { poToken };
+							Object.defineProperty(window.navigator, "userAgent", {
+								value: userAgent,
+								writable: false,
+							});
+							window.visitorData = visitorData;
+							window.onPoToken = (poToken: string) => {
+								clearTimeout(timeout);
+								res({ poToken });
+							};
+
+							window.addEventListener("error", (event) => {
+								const message = event.error?.message || "Unknown error";
+								logger.error(message);
+							});
+
+							window.eval(
+								baseContent.replace(
+									/}\s*\)\(_yt_player\);\s*$/,
+									(matched) => `;${baseAppendContent};${matched}`,
+								),
+							);
+
+							destroy = () => {
+								clearTimeout(timeout);
+								window.close();
+								if (!isIntentionalClose) {
+									const err = new Error("Window is closed");
+									logger.error(err);
+									rej(err);
+								}
+							};
+						},
+					);
+
+					if (poToken && poToken.length >= 160) {
+						return { poToken };
+					} else {
+					}
+				} catch (error) {
+					if (attempts >= maxAttempts) {
+						throw error;
+					}
+
+					await new Promise((resolve) => setTimeout(resolve, 2000));
+				} finally {
+					isIntentionalClose = true;
+					destroy?.();
 				}
 			}
+
+			throw new Error(`Failed to generate token after ${maxAttempts} attempts`);
 		},
 	};
 };
