@@ -23,7 +23,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "^2.0.4",
 		"@types/bun": "latest",
-		"@types/jsdom": "^27.0.0"
+		"@types/jsdom": "^28.0.1"
 	},
 	"peerDependencies": {
 		"typescript": "^5.8.3"
